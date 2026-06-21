@@ -1,0 +1,9 @@
+node_modules/
+dist/
+server/planit.db
+server/planit.db-wal
+server/planit.db-shm
+server/day-planner.db
+server/day-planner.db-wal
+server/day-planner.db-shm
+.env

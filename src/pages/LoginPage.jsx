@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="login-page">
       <form className="login-card glass-card" onSubmit={handleSubmit}>
         <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '48px' }}>📋</span>
+          <img src="/favicon.png" alt="Planit" style={{ width: '64px', height: '64px', borderRadius: '16px' }} />
         </div>
         <h1 className="login-title gradient-text">Planit</h1>
         <p className="login-subtitle">Track your time, goals & productivity</p>

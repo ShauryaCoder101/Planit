@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useApi } from '../hooks/useApi.jsx';
-import { X, Plus, Trash2, GripVertical, Clock, Target } from 'lucide-react';
+import { X, Plus, Trash2, GripVertical, Clock, Target, CalendarClock } from 'lucide-react';
 
 const DAYS = [
   { key: 0, label: 'Sun' },
@@ -23,6 +23,7 @@ export default function AddTaskModal({ task, onClose, onSaved, isTemplate = fals
   const [recurrenceType, setRecurrenceType] = useState(task?.recurrenceType || 'one-time');
   const [recurrenceDays, setRecurrenceDays] = useState(task?.recurrenceDays || []);
   const [carryOver, setCarryOver] = useState(task?.carryOver || false);
+  const [scheduledTime, setScheduledTime] = useState(task?.scheduledTime || '');
   const [subtasks, setSubtasks] = useState(task?.subtasks?.map((s) => (typeof s === 'string' ? s : s.name || s.title || '')) || []);
   const [newSubtask, setNewSubtask] = useState('');
   const [saving, setSaving] = useState(false);
@@ -84,12 +85,13 @@ export default function AddTaskModal({ task, onClose, onSaved, isTemplate = fals
       const body = {
         name: name.trim(),
         taskType,
-        duration: taskType === 'goal' ? 0 : (Number(duration) || 30),
+        duration: taskType === 'timed' ? (Number(duration) || 30) : 0,
         goalCategory: goalCategory.trim() || 'General',
         recurrenceType,
         recurrenceDays: recurrenceType === 'recurring' ? recurrenceDays : [],
         carryOver,
         subtasks: subtasks.map((s) => ({ name: s })),
+        scheduledTime: taskType === 'scheduled' ? scheduledTime : null,
       };
       if (isEditing) {
         await api.put(`/api/tasks/${task.id}`, body);
@@ -102,7 +104,7 @@ export default function AddTaskModal({ task, onClose, onSaved, isTemplate = fals
     } finally {
       setSaving(false);
     }
-  }, [name, taskType, duration, goalCategory, recurrenceType, recurrenceDays, carryOver, subtasks, isEditing, task, api, onSaved]);
+  }, [name, taskType, duration, goalCategory, recurrenceType, recurrenceDays, carryOver, subtasks, scheduledTime, isEditing, task, api, onSaved]);
 
   // Close on escape
   useEffect(() => {
@@ -157,13 +159,37 @@ export default function AddTaskModal({ task, onClose, onSaved, isTemplate = fals
               >
                 <Target size={14} /> Goal
               </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${taskType === 'scheduled' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => { setTaskType('scheduled'); setRecurrenceType('recurring'); }}
+                style={{ flex: 1 }}
+              >
+                <CalendarClock size={14} /> Scheduled
+              </button>
             </div>
             <span className="text-xs text-muted" style={{ marginTop: '4px' }}>
               {taskType === 'timed'
                 ? 'Has a set duration you plan to spend'
-                : 'No fixed time — just start the clock when you work on it'}
+                : taskType === 'goal'
+                  ? 'No fixed time — just start the clock when you work on it'
+                  : 'Happens at a specific time (e.g. meetings, classes)'}
             </span>
           </div>
+
+          {/* Scheduled Time (only for scheduled tasks) */}
+          {taskType === 'scheduled' && (
+            <div className="form-group">
+              <label className="form-label">Scheduled Time</label>
+              <input
+                className="form-input"
+                type="time"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                style={{ maxWidth: '200px' }}
+              />
+            </div>
+          )}
 
           {/* Duration (only for timed tasks) */}
           {taskType === 'timed' && (

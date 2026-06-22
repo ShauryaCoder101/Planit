@@ -35,26 +35,27 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, duration, goal_category, recurrence_type, recurrence_days, carry_over, subtasks, task_type } = req.body;
+    const { name, duration, goal_category, recurrence_type, recurrence_days, carry_over, subtasks, task_type, scheduled_time } = req.body;
 
     if (!name || !goal_category) {
       return res.status(400).json({ error: 'Name and goal_category are required' });
     }
 
     const taskType = task_type || 'timed';
-    const taskDuration = taskType === 'goal' ? (duration || 0) : (duration || 30);
+    const taskDuration = taskType === 'goal' ? (duration || 0) : (taskType === 'scheduled' ? (duration || 0) : (duration || 30));
     const recType = recurrence_type || 'one-time';
     const recDays = recurrence_days ? JSON.stringify(recurrence_days) : null;
     const carryOver = carry_over ? 1 : 0;
+    const schedTime = taskType === 'scheduled' ? (scheduled_time || null) : null;
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       const { rows: taskRows } = await client.query(
-        `INSERT INTO tasks (user_id, name, duration, goal_category, recurrence_type, recurrence_days, carry_over, task_type)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-        [userId, name, taskDuration, goal_category, recType, recDays, carryOver, taskType]
+        `INSERT INTO tasks (user_id, name, duration, goal_category, recurrence_type, recurrence_days, carry_over, task_type, scheduled_time)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [userId, name, taskDuration, goal_category, recType, recDays, carryOver, taskType, schedTime]
       );
       const taskId = taskRows[0].id;
 
@@ -99,7 +100,7 @@ router.put('/:id', async (req, res) => {
   try {
     const userId = req.user.id;
     const taskId = req.params.id;
-    const { name, duration, goal_category, recurrence_type, recurrence_days, carry_over, subtasks: newSubtasks, task_type } = req.body;
+    const { name, duration, goal_category, recurrence_type, recurrence_days, carry_over, subtasks: newSubtasks, task_type, scheduled_time } = req.body;
 
     const { rows: [existing] } = await pool.query('SELECT * FROM tasks WHERE id = $1 AND user_id = $2', [taskId, userId]);
     if (!existing) {
@@ -112,16 +113,17 @@ router.put('/:id', async (req, res) => {
     const updatedRecDays = recurrence_days !== undefined ? JSON.stringify(recurrence_days) : existing.recurrence_days;
     const updatedCarryOver = carry_over !== undefined ? (carry_over ? 1 : 0) : existing.carry_over;
     const updatedTaskType = task_type !== undefined ? task_type : existing.task_type;
-    const finalDuration = updatedTaskType === 'goal' ? (duration || 0) : (duration !== undefined ? duration : existing.duration);
+    const finalDuration = updatedTaskType === 'goal' ? (duration || 0) : (updatedTaskType === 'scheduled' ? (duration || 0) : (duration !== undefined ? duration : existing.duration));
+    const updatedScheduledTime = scheduled_time !== undefined ? scheduled_time : existing.scheduled_time;
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       await client.query(
-        `UPDATE tasks SET name = $1, duration = $2, goal_category = $3, recurrence_type = $4, recurrence_days = $5, carry_over = $6, task_type = $7
-         WHERE id = $8`,
-        [updatedName, finalDuration, updatedCategory, updatedRecType, updatedRecDays, updatedCarryOver, updatedTaskType, taskId]
+        `UPDATE tasks SET name = $1, duration = $2, goal_category = $3, recurrence_type = $4, recurrence_days = $5, carry_over = $6, task_type = $7, scheduled_time = $8
+         WHERE id = $9`,
+        [updatedName, finalDuration, updatedCategory, updatedRecType, updatedRecDays, updatedCarryOver, updatedTaskType, updatedScheduledTime, taskId]
       );
 
       if (newSubtasks !== undefined && Array.isArray(newSubtasks)) {

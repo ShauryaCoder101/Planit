@@ -120,11 +120,11 @@ router.get('/', async (req, res) => {
     await generateDailyTasks(userId, date);
 
     const { rows: dailyTasks } = await pool.query(
-      `SELECT dt.*, t.name, t.duration, t.goal_category, t.recurrence_type, t.recurrence_days, t.carry_over, t.task_type
+      `SELECT dt.*, t.name, t.duration, t.goal_category, t.recurrence_type, t.recurrence_days, t.carry_over, t.task_type, t.scheduled_time
        FROM daily_tasks dt
        JOIN tasks t ON dt.task_id = t.id
        WHERE dt.user_id = $1 AND dt.date = $2
-       ORDER BY dt.is_carried_over DESC, t.goal_category ASC, t.name ASC`,
+       ORDER BY dt.is_carried_over DESC, t.scheduled_time ASC NULLS LAST, t.goal_category ASC, t.name ASC`,
       [userId, date]
     );
 

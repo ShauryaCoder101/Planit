@@ -5,7 +5,7 @@ import SubtaskList from './SubtaskList.jsx';
 import { getCategoryColor } from './ReportCharts.jsx';
 import {
   Play, Pause, Square, CheckCircle2, Circle,
-  ChevronDown, ChevronUp, Clock, ArrowRightCircle, Target
+  ChevronDown, ChevronUp, Clock, ArrowRightCircle, Target, CalendarClock
 } from 'lucide-react';
 
 export default function TaskCard({ task, onUpdate }) {
@@ -110,6 +110,10 @@ export default function TaskCard({ task, onUpdate }) {
             {task.taskType === 'goal' ? (
               <span className="badge" style={{ background: 'rgba(6, 182, 212, 0.15)', color: 'var(--primary-cyan)' }}>
                 <Target size={10} /> Goal
+              </span>
+            ) : task.taskType === 'scheduled' ? (
+              <span className="badge" style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#a855f7' }}>
+                <CalendarClock size={10} /> {task.scheduledTime ? (() => { const [h, m] = task.scheduledTime.split(':'); const hr = parseInt(h); return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`; })() : 'Scheduled'}
               </span>
             ) : (
               <span className="badge badge-duration">

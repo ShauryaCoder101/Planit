@@ -40,6 +40,7 @@ async function initDB() {
         recurrence_days TEXT,
         carry_over INTEGER NOT NULL DEFAULT 0,
         task_type TEXT NOT NULL DEFAULT 'timed',
+        scheduled_time TEXT,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
@@ -137,6 +138,13 @@ async function initDB() {
 
     // Ensure default user is admin
     await client.query('UPDATE users SET is_admin = 1 WHERE email = $1', ['shauryasharma2002@gmail.com']);
+
+    // Migration: add scheduled_time column if not exists
+    try {
+      await client.query('ALTER TABLE tasks ADD COLUMN scheduled_time TEXT');
+    } catch (e) {
+      // Column already exists, ignore
+    }
 
     console.log('Database initialized successfully');
   } finally {

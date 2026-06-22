@@ -8,11 +8,6 @@ const router = express.Router();
  * Handles recurring tasks, one-time tasks, and carry-over.
  */
 async function generateDailyTasks(userId, date) {
-  const { rows: [existing] } = await pool.query(
-    'SELECT COUNT(*) as count FROM daily_tasks WHERE user_id = $1 AND date = $2', [userId, date]
-  );
-  if (parseInt(existing.count) > 0) return;
-
   const dateObj = new Date(date + 'T00:00:00');
   const dayOfWeek = dateObj.getDay();
 
@@ -39,6 +34,13 @@ async function generateDailyTasks(userId, date) {
       }
 
       if (shouldGenerate) {
+        // Check if this specific task already has a daily entry for today
+        const { rows: alreadyExists } = await client.query(
+          'SELECT id FROM daily_tasks WHERE task_id = $1 AND user_id = $2 AND date = $3',
+          [task.id, userId, date]
+        );
+        if (alreadyExists.length > 0) continue;
+
         const { rows: [inserted] } = await client.query(
           `INSERT INTO daily_tasks (task_id, user_id, date, status, actual_duration, is_carried_over, carried_from)
            VALUES ($1, $2, $3, 'pending', 0, $4, $5) RETURNING id`,

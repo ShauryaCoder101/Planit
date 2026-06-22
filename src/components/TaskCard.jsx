@@ -24,14 +24,19 @@ export default function TaskCard({ task, onUpdate }) {
 
   const handleComplete = useCallback(async () => {
     try {
-      // Finish timer FIRST so actual_duration is saved before completing
-      if (isTimerForThis) await finishTimer();
-      await api.post(`/api/daily/${task.id}/complete`);
+      if (isCompleted) {
+        // Uncheck — set back to pending (keeps actual_duration)
+        await api.put(`/api/daily/${task.id}`, { status: 'pending' });
+      } else {
+        // Finish timer FIRST so actual_duration is saved before completing
+        if (isTimerForThis) await finishTimer();
+        await api.post(`/api/daily/${task.id}/complete`);
+      }
       onUpdate();
     } catch (err) {
       console.error(err);
     }
-  }, [api, task.id, isTimerForThis, finishTimer, onUpdate]);
+  }, [api, task.id, isCompleted, isTimerForThis, finishTimer, onUpdate]);
 
   const handleTimerAction = useCallback(async () => {
     setTimerLoading(true);

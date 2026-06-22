@@ -1,5 +1,5 @@
 const express = require('express');
-const db = require('../db.cjs');
+const pool = require('../db.cjs');
 
 const router = express.Router();
 
@@ -42,7 +42,7 @@ function getDateRange(startStr, endStr) {
 /**
  * Helper: Aggregate report data for a set of dates.
  */
-function aggregateReport(userId, dates) {
+async function aggregateReport(userId, dates) {
   const hoursByGoal = {};
   let totalCompleted = 0;
   let totalTasks = 0;
@@ -51,18 +51,19 @@ function aggregateReport(userId, dates) {
   const sleepData = [];
   const dayBreakdown = [];
 
-  const getDailyTasks = db.prepare(`
+  const dailyTasksSQL = `
     SELECT dt.*, t.name, t.duration, t.goal_category
     FROM daily_tasks dt
     JOIN tasks t ON dt.task_id = t.id
-    WHERE dt.user_id = ? AND dt.date = ?
-  `);
+    WHERE dt.user_id = $1 AND dt.date = $2
+  `;
 
-  const getSleepLog = db.prepare('SELECT * FROM sleep_logs WHERE user_id = ? AND date = ?');
+  const sleepLogSQL = 'SELECT * FROM sleep_logs WHERE user_id = $1 AND date = $2';
 
   for (const date of dates) {
-    const tasks = getDailyTasks.all(userId, date);
-    const sleepLog = getSleepLog.get(userId, date);
+    const { rows: tasks } = await pool.query(dailyTasksSQL, [userId, date]);
+    const { rows: sleepRows } = await pool.query(sleepLogSQL, [userId, date]);
+    const sleepLog = sleepRows[0];
 
     let dayCompleted = 0;
     let dayTotal = tasks.length;
@@ -132,7 +133,7 @@ function aggregateReport(userId, dates) {
 }
 
 // GET /api/reports/daily?date=YYYY-MM-DD
-router.get('/daily', (req, res) => {
+router.get('/daily', async (req, res) => {
   try {
     const userId = req.user.id;
     const { date } = req.query;
@@ -141,7 +142,7 @@ router.get('/daily', (req, res) => {
       return res.status(400).json({ error: 'Date query parameter is required' });
     }
 
-    const report = aggregateReport(userId, [date]);
+    const report = await aggregateReport(userId, [date]);
     res.json({ report: { ...report, type: 'daily', date } });
   } catch (err) {
     console.error('Daily report error:', err);
@@ -150,7 +151,7 @@ router.get('/daily', (req, res) => {
 });
 
 // GET /api/reports/weekly?date=YYYY-MM-DD
-router.get('/weekly', (req, res) => {
+router.get('/weekly', async (req, res) => {
   try {
     const userId = req.user.id;
     const { date } = req.query;
@@ -163,7 +164,7 @@ router.get('/weekly', (req, res) => {
     const sunday = getSunday(date);
     const dates = getDateRange(monday, sunday);
 
-    const report = aggregateReport(userId, dates);
+    const report = await aggregateReport(userId, dates);
     res.json({
       report: {
         ...report,
@@ -179,7 +180,7 @@ router.get('/weekly', (req, res) => {
 });
 
 // GET /api/reports/monthly?year=YYYY&month=MM
-router.get('/monthly', (req, res) => {
+router.get('/monthly', async (req, res) => {
   try {
     const userId = req.user.id;
     const { year, month } = req.query;
@@ -202,7 +203,7 @@ router.get('/monthly', (req, res) => {
 
     const dates = getDateRange(firstDay, lastDay);
 
-    const report = aggregateReport(userId, dates);
+    const report = await aggregateReport(userId, dates);
     res.json({
       report: {
         ...report,

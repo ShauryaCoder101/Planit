@@ -1,9 +1,8 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 
-// Initialize database (creates tables + seeds default user)
-const db = require('./db.cjs');
+// Initialize database pool (creates tables + seeds default user)
+const pool = require('./db.cjs');
 
 const { router: authRouter, authMiddleware } = require('./auth.cjs');
 const tasksRouter = require('./routes/tasks.cjs');
@@ -23,7 +22,7 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',
 ];
 
-// Add custom frontend URL from env (set this in Railway to your Vercel URL)
+// Add custom frontend URL from env
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);
 }
@@ -55,8 +54,13 @@ app.use('/api/friends', authMiddleware, friendsRouter);
 app.use('/api/admin', authMiddleware, adminRouter);
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(503).json({ status: 'error', db: 'disconnected', timestamp: new Date().toISOString() });
+  }
 });
 
 // Global error handler
@@ -70,10 +74,13 @@ app.listen(PORT, '0.0.0.0', () => {
 
   // Self-ping every 10 minutes to keep Render free tier alive
   if (process.env.RENDER_EXTERNAL_URL || process.env.RENDER) {
-    const url = `${process.env.RENDER_EXTERNAL_URL || `http://0.0.0.0:${PORT}`}/health`;
+    const pingUrl = process.env.RENDER_EXTERNAL_URL
+      ? `${process.env.RENDER_EXTERNAL_URL}/health`
+      : `http://0.0.0.0:${PORT}/health`;
     setInterval(() => {
-      require('http').get(url.replace('https:', 'http:'), () => {}).on('error', () => {});
-    }, 10 * 60 * 1000); // 10 minutes
+      const http = pingUrl.startsWith('https') ? require('https') : require('http');
+      http.get(pingUrl, () => {}).on('error', () => {});
+    }, 10 * 60 * 1000);
     console.log('Self-ping enabled (every 10 min)');
   }
 });

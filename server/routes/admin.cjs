@@ -1,122 +1,108 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const db = require('../db.cjs');
+const pool = require('../db.cjs');
 
 const router = express.Router();
 
-// Admin middleware — checks that the authenticated user has is_admin=1
-function adminMiddleware(req, res, next) {
-  const user = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(req.user.id);
-  if (!user || user.is_admin !== 1) {
-    return res.status(403).json({ error: 'Admin access required' });
+// Admin middleware
+async function adminMiddleware(req, res, next) {
+  try {
+    const { rows } = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!rows[0] || rows[0].is_admin !== 1) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+  } catch (err) {
+    console.error('Admin middleware error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  next();
 }
 
-// Apply admin middleware to all routes in this router
 router.use(adminMiddleware);
 
-// GET /api/admin/users — list all users
-router.get('/users', (req, res) => {
+// GET /api/admin/users
+router.get('/users', async (req, res) => {
   try {
-    const users = db.prepare('SELECT id, name, email, is_admin FROM users ORDER BY id ASC').all();
-    res.json({ users });
+    const { rows } = await pool.query('SELECT id, name, email, is_admin FROM users ORDER BY id ASC');
+    res.json({ users: rows });
   } catch (err) {
     console.error('Admin list users error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// POST /api/admin/users — create new user
-router.post('/users', (req, res) => {
+// POST /api/admin/users
+router.post('/users', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
-
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-    if (existing) {
+    const { rows: existing } = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existing.length > 0) {
       return res.status(409).json({ error: 'User with this email already exists' });
     }
-
     const hashedPassword = bcrypt.hashSync(password, 10);
-    const result = db.prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)').run(
-      name, email, hashedPassword
+    const { rows } = await pool.query(
+      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id',
+      [name, email, hashedPassword]
     );
-
-    const user = db.prepare('SELECT id, name, email, is_admin FROM users WHERE id = ?').get(result.lastInsertRowid);
-    res.status(201).json({ user });
+    const { rows: userRows } = await pool.query('SELECT id, name, email, is_admin FROM users WHERE id = $1', [rows[0].id]);
+    res.status(201).json({ user: userRows[0] });
   } catch (err) {
     console.error('Admin create user error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// PUT /api/admin/users/:id — update user
-router.put('/users/:id', (req, res) => {
+// PUT /api/admin/users/:id
+router.put('/users/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { name, email, password } = req.body;
-
-    const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
-    if (!existing) {
+    const { rows: existing } = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (existing.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-
     const setClauses = [];
     const values = [];
-
-    if (name !== undefined) {
-      setClauses.push('name = ?');
-      values.push(name);
-    }
+    let paramIdx = 1;
+    if (name !== undefined) { setClauses.push(`name = $${paramIdx++}`); values.push(name); }
     if (email !== undefined) {
-      // Check for email conflict
-      const conflict = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email, userId);
-      if (conflict) {
+      const { rows: conflict } = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email, userId]);
+      if (conflict.length > 0) {
         return res.status(409).json({ error: 'Email already in use by another user' });
       }
-      setClauses.push('email = ?');
-      values.push(email);
+      setClauses.push(`email = $${paramIdx++}`); values.push(email);
     }
     if (password !== undefined) {
-      const hashedPassword = bcrypt.hashSync(password, 10);
-      setClauses.push('password = ?');
-      values.push(hashedPassword);
+      setClauses.push(`password = $${paramIdx++}`); values.push(bcrypt.hashSync(password, 10));
     }
-
     if (setClauses.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
-
     values.push(userId);
-    db.prepare(`UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`).run(...values);
-
-    const user = db.prepare('SELECT id, name, email, is_admin FROM users WHERE id = ?').get(userId);
-    res.json({ user });
+    await pool.query(`UPDATE users SET ${setClauses.join(', ')} WHERE id = $${paramIdx}`, values);
+    const { rows } = await pool.query('SELECT id, name, email, is_admin FROM users WHERE id = $1', [userId]);
+    res.json({ user: rows[0] });
   } catch (err) {
     console.error('Admin update user error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// DELETE /api/admin/users/:id — delete user (cannot delete self)
-router.delete('/users/:id', (req, res) => {
+// DELETE /api/admin/users/:id
+router.delete('/users/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
-
     if (userId === req.user.id) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
-
-    const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
-    if (!existing) {
+    const { rows } = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    await pool.query('DELETE FROM users WHERE id = $1', [userId]);
     res.json({ message: 'User deleted successfully' });
   } catch (err) {
     console.error('Admin delete user error:', err);

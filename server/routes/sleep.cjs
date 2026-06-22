@@ -1,50 +1,45 @@
 const express = require('express');
-const db = require('../db.cjs');
+const pool = require('../db.cjs');
 
 const router = express.Router();
 
-// GET /api/sleep/:date — get sleep log for date
-router.get('/:date', (req, res) => {
+// GET /api/sleep/:date
+router.get('/:date', async (req, res) => {
   try {
-    const { date } = req.params;
     const userId = req.user.id;
-
-    const log = db.prepare('SELECT * FROM sleep_logs WHERE user_id = ? AND date = ?').get(userId, date);
-
-    res.json({ sleep: log || null });
+    const { date } = req.params;
+    const { rows } = await pool.query('SELECT * FROM sleep_logs WHERE user_id = $1 AND date = $2', [userId, date]);
+    res.json({ sleep: rows[0] || null });
   } catch (err) {
     console.error('Get sleep error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// POST /api/sleep — upsert sleep hours for a date
-router.post('/', (req, res) => {
+// POST /api/sleep
+router.post('/', async (req, res) => {
   try {
-    const { date, hours } = req.body;
     const userId = req.user.id;
-
-    if (!date || hours === undefined || hours === null) {
+    const { date, hours } = req.body;
+    if (!date || hours === undefined) {
       return res.status(400).json({ error: 'Date and hours are required' });
     }
-
-    if (typeof hours !== 'number' || hours < 0 || hours > 24) {
-      return res.status(400).json({ error: 'Hours must be a number between 0 and 24' });
-    }
-
-    const existing = db.prepare('SELECT id FROM sleep_logs WHERE user_id = ? AND date = ?').get(userId, date);
-
-    if (existing) {
-      db.prepare('UPDATE sleep_logs SET hours = ? WHERE id = ?').run(hours, existing.id);
-      const updated = db.prepare('SELECT * FROM sleep_logs WHERE id = ?').get(existing.id);
-      res.json({ sleep: updated });
+    const { rows: existing } = await pool.query('SELECT id FROM sleep_logs WHERE user_id = $1 AND date = $2', [userId, date]);
+    let sleep;
+    if (existing.length > 0) {
+      await pool.query('UPDATE sleep_logs SET hours = $1 WHERE id = $2', [hours, existing[0].id]);
+      const { rows } = await pool.query('SELECT * FROM sleep_logs WHERE id = $1', [existing[0].id]);
+      sleep = rows[0];
     } else {
-      const result = db.prepare('INSERT INTO sleep_logs (user_id, date, hours) VALUES (?, ?, ?)').run(userId, date, hours);
-      const created = db.prepare('SELECT * FROM sleep_logs WHERE id = ?').get(result.lastInsertRowid);
-      res.status(201).json({ sleep: created });
+      const { rows } = await pool.query(
+        'INSERT INTO sleep_logs (user_id, date, hours) VALUES ($1, $2, $3) RETURNING *',
+        [userId, date, hours]
+      );
+      sleep = rows[0];
     }
+    res.json({ sleep });
   } catch (err) {
-    console.error('Upsert sleep error:', err);
+    console.error('Log sleep error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

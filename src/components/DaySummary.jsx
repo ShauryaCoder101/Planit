@@ -6,25 +6,30 @@ export default function DaySummary({ tasks }) {
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((t) => t.status === 'completed').length;
+    const inProgress = tasks.filter((t) => t.status === 'in-progress').length;
+
+    // Count actual time from ALL tasks that have been worked on (completed + in-progress)
     const totalMinutes = tasks.reduce((sum, t) => {
-      if (t.status === 'completed') return sum + (t.actualDuration || t.duration || t.estimatedDuration || 0);
+      const actual = t.actualDuration || 0;
+      if (actual > 0) return sum + actual;
       return sum;
     }, 0);
 
     const byCategory = {};
     tasks.forEach((t) => {
       const cat = t.goalCategory || 'Uncategorized';
-      if (!byCategory[cat]) byCategory[cat] = { total: 0, completed: 0, minutes: 0 };
+      if (!byCategory[cat]) byCategory[cat] = { total: 0, completed: 0, inProgress: 0, minutes: 0 };
       byCategory[cat].total += 1;
-      if (t.status === 'completed') {
-        byCategory[cat].completed += 1;
-        byCategory[cat].minutes += (t.actualDuration || t.duration || t.estimatedDuration || 0);
-      }
+      if (t.status === 'completed') byCategory[cat].completed += 1;
+      if (t.status === 'in-progress') byCategory[cat].inProgress += 1;
+      // Count actual time from any task that has been worked on
+      const actual = t.actualDuration || 0;
+      if (actual > 0) byCategory[cat].minutes += actual;
     });
 
     const maxMinutes = Math.max(...Object.values(byCategory).map((c) => c.minutes), 1);
 
-    return { total, completed, totalMinutes, byCategory, maxMinutes };
+    return { total, completed, inProgress, totalMinutes, byCategory, maxMinutes };
   }, [tasks]);
 
   return (
@@ -74,7 +79,7 @@ export default function DaySummary({ tasks }) {
                     <span className="text-sm">{cat}</span>
                   </div>
                   <span className="text-xs text-secondary">
-                    {data.completed}/{data.total} · {data.minutes}m
+                    {data.completed}/{data.total} · {data.minutes >= 60 ? `${Math.floor(data.minutes / 60)}h ${data.minutes % 60}m` : `${data.minutes}m`}
                   </span>
                 </div>
                 <div className="h-bar-track">

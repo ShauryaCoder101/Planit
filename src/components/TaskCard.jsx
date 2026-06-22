@@ -24,8 +24,9 @@ export default function TaskCard({ task, onUpdate }) {
 
   const handleComplete = useCallback(async () => {
     try {
-      await api.post(`/api/daily/${task.id}/complete`);
+      // Finish timer FIRST so actual_duration is saved before completing
       if (isTimerForThis) await finishTimer();
+      await api.post(`/api/daily/${task.id}/complete`);
       onUpdate();
     } catch (err) {
       console.error(err);

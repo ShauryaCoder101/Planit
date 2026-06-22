@@ -105,6 +105,26 @@ async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         UNIQUE(user_id, friend_id)
       );
+
+      CREATE TABLE IF NOT EXISTS cat_topics (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        subject TEXT NOT NULL,
+        topic TEXT NOT NULL,
+        subtopic TEXT,
+        completed INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0
+      );
+
+      CREATE TABLE IF NOT EXISTS revision_questions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        subject TEXT NOT NULL,
+        question_text TEXT,
+        question_image TEXT,
+        solution TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
     `);
 
     // Create indexes
@@ -120,6 +140,8 @@ async function initDB() {
       'CREATE INDEX IF NOT EXISTS idx_friend_requests_from ON friend_requests(from_user_id)',
       'CREATE INDEX IF NOT EXISTS idx_friendships_user ON friendships(user_id)',
       'CREATE INDEX IF NOT EXISTS idx_friendships_friend ON friendships(friend_id)',
+      'CREATE INDEX IF NOT EXISTS idx_cat_topics_user ON cat_topics(user_id, subject)',
+      'CREATE INDEX IF NOT EXISTS idx_revision_user ON revision_questions(user_id, subject)',
     ];
     for (const idx of indexes) {
       await client.query(idx);

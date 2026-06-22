@@ -1231,3 +1231,6 @@ ul, ol { list-style: none; }
     padding: var(--sp-4);
   }
 }
+
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

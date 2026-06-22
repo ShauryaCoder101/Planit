@@ -9,6 +9,7 @@ import ReportsPage from './pages/ReportsPage.jsx';
 import FriendsPage from './pages/FriendsPage.jsx';
 import FriendProfilePage from './pages/FriendProfilePage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import CatPage from './pages/CatPage.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import TimerBanner from './components/TimerBanner.jsx';
 import { useTimer } from './hooks/useTimer.jsx';
@@ -18,21 +19,26 @@ function AuthenticatedApp() {
   const hasTimer = !!activeTimer;
 
   return (
-    <div className="app-layout">
-      {hasTimer && <TimerBanner />}
-      <div className={`page-content ${hasTimer ? 'has-timer' : ''}`}>
-        <Routes>
-          <Route path="/" element={<TodayPage />} />
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/friends" element={<FriendsPage />} />
-          <Route path="/friends/:friendId" element={<FriendProfilePage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </div>
-      <BottomNav />
-    </div>
+    <Routes>
+      <Route path="/cat" element={<CatPage />} />
+      <Route path="*" element={
+        <div className="app-layout">
+          {hasTimer && <TimerBanner />}
+          <div className={`page-content ${hasTimer ? 'has-timer' : ''}`}>
+            <Routes>
+              <Route path="/" element={<TodayPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/friends" element={<FriendsPage />} />
+              <Route path="/friends/:friendId" element={<FriendProfilePage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/admin" element={<AdminPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+          <BottomNav />
+        </div>
+      } />
+    </Routes>
   );
 }
 

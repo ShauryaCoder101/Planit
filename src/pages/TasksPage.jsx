@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApi } from '../hooks/useApi.jsx';
 import AddTaskModal from '../components/AddTaskModal.jsx';
 import { Plus, Trash2, Edit3, Repeat, ArrowRightCircle, ListTodo, Target } from 'lucide-react';
@@ -8,6 +9,7 @@ const DAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export default function TasksPage() {
   const api = useApi();
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -84,6 +86,24 @@ export default function TasksPage() {
       </p>
 
       {error && <div className="error-message mb-4">{error}</div>}
+
+      {/* CAT - Focussed entry point */}
+      <button
+        onClick={() => navigate('/cat')}
+        className="glass-card glass-card-hover"
+        style={{
+          width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left',
+          padding: '16px 20px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 14,
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(245,158,11,0.08))',
+        }}
+      >
+        <span style={{ fontSize: '1.6rem' }}>🎯</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: '1rem', fontFamily: 'Outfit, sans-serif' }}>CAT — Focussed</div>
+          <span className="text-xs text-muted">Topics, AI Solver & Revision</span>
+        </div>
+        <span style={{ fontSize: '1.2rem' }}>→</span>
+      </button>
 
       {grouped.length === 0 && (
         <div className="empty-state mt-6">

@@ -12,6 +12,7 @@ const sleepRouter = require('./routes/sleep.cjs');
 const reportsRouter = require('./routes/reports.cjs');
 const friendsRouter = require('./routes/friends.cjs');
 const adminRouter = require('./routes/admin.cjs');
+const catRouter = require('./routes/cat.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -39,7 +40,7 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Auth routes (login is public)
 app.use('/api/auth', authRouter);
@@ -52,6 +53,7 @@ app.use('/api/sleep', authMiddleware, sleepRouter);
 app.use('/api/reports', authMiddleware, reportsRouter);
 app.use('/api/friends', authMiddleware, friendsRouter);
 app.use('/api/admin', authMiddleware, adminRouter);
+app.use('/api/cat', authMiddleware, catRouter);
 
 // Health check
 app.get('/health', async (req, res) => {

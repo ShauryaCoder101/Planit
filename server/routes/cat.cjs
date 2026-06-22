@@ -144,7 +144,8 @@ router.put('/topics/:id/toggle', async (req, res) => {
 router.post('/ask', async (req, res) => {
   try {
     const userId = req.user.id;
-    const { questionText, questionImage } = req.body;
+    const questionText = req.body.question_text || req.body.questionText;
+    const questionImage = req.body.question_image || req.body.questionImage;
 
     if (!questionText && !questionImage) {
       return res.status(400).json({ error: 'Provide a question (text or image)' });

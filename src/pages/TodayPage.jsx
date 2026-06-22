@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { useApi } from '../hooks/useApi.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTimer } from '../hooks/useTimer.jsx';
+import { useTaskAlarms, requestNotificationPermission } from '../hooks/useTaskAlarms.jsx';
 import TaskCard from '../components/TaskCard.jsx';
 import SleepLogger from '../components/SleepLogger.jsx';
 import DaySummary from '../components/DaySummary.jsx';
@@ -19,6 +20,9 @@ export default function TodayPage() {
   const [error, setError] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Task alarms — fires notifications 15 min before scheduled tasks
+  useTaskAlarms(tasks);
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const dateDisplay = format(new Date(), 'EEEE, MMMM d');
@@ -47,6 +51,7 @@ export default function TodayPage() {
 
   useEffect(() => {
     fetchTasks();
+    requestNotificationPermission();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -305,7 +305,7 @@ function AiHelperTab() {
 
       {result && (
         <div className="glass-card" style={{ borderLeft: `3px solid ${subjectInfo?.color || 'var(--primary-cyan)'}` }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <span style={{
               padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
               background: `${subjectInfo?.color}20`, color: subjectInfo?.color,
@@ -313,6 +313,14 @@ function AiHelperTab() {
             }}>
               {subjectInfo?.emoji} {subjectInfo?.label || result.subject}
             </span>
+            {result.topic && (
+              <span style={{
+                padding: '4px 12px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+                background: 'var(--bg-tertiary)', color: 'var(--text-secondary)',
+              }}>
+                {result.topic}
+              </span>
+            )}
             <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>✓ Saved to Revision</span>
           </div>
           <div style={{ fontSize: '0.9rem', lineHeight: 1.7, whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>
@@ -434,7 +442,17 @@ function RevisionTab() {
       <div className="glass-card" style={{ borderTop: `3px solid ${subjectInfo?.color}` }}>
         {/* Question */}
         <div style={{ marginBottom: 16 }}>
-          <span className="text-xs text-muted" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>Question</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span className="text-xs text-muted" style={{ textTransform: 'uppercase', letterSpacing: 1 }}>Question</span>
+            {question.topic && (
+              <span style={{
+                padding: '2px 10px', borderRadius: 12, fontSize: '0.7rem', fontWeight: 600,
+                background: 'var(--bg-tertiary)', color: 'var(--text-secondary)',
+              }}>
+                {question.topic}
+              </span>
+            )}
+          </div>
           {question.questionImage && (
             <img
               src={question.questionImage}

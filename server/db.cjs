@@ -168,6 +168,13 @@ async function initDB() {
       // Column already exists, ignore
     }
 
+    // Migration: add topic column to revision_questions
+    try {
+      await client.query('ALTER TABLE revision_questions ADD COLUMN topic TEXT');
+    } catch (e) {
+      // Column already exists, ignore
+    }
+
     console.log('Database initialized successfully');
   } finally {
     client.release();

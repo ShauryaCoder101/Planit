@@ -173,10 +173,12 @@ router.post('/ask', async (req, res) => {
 
 Solve this CAT exam question using the FASTEST and most efficient method. Show clear steps.
 
-Then classify this question into exactly one of these subjects: maths, lrdi, english
+Then classify this question:
+1. Subject: exactly one of: maths, lrdi, english
+2. Topic: the specific topic area. For maths use one of: Arithmetic, Algebra, Geometry & Mensuration, Number System, Modern Maths. For LRDI use one of: Data Interpretation, Analysis Skills. For English use: Verbal Ability.
 
 Respond in this exact JSON format (no markdown, no code fences):
-{"solution": "your detailed step-by-step solution here", "subject": "maths or lrdi or english"}`
+{"solution": "your detailed step-by-step solution here", "subject": "maths or lrdi or english", "topic": "the topic name"}`
     });
 
     // Call Gemini API
@@ -202,7 +204,7 @@ Respond in this exact JSON format (no markdown, no code fences):
     const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     // Parse the JSON response
-    let solution, subject;
+    let solution, subject, topic;
     try {
       // Try to extract JSON from the response (handle markdown code fences)
       const jsonMatch = rawText.match(/\{[\s\S]*?\}/);
@@ -210,23 +212,26 @@ Respond in this exact JSON format (no markdown, no code fences):
         const parsed = JSON.parse(jsonMatch[0]);
         solution = parsed.solution || rawText;
         subject = ['maths', 'lrdi', 'english'].includes(parsed.subject) ? parsed.subject : 'maths';
+        topic = parsed.topic || null;
       } else {
         solution = rawText;
         subject = 'maths';
+        topic = null;
       }
     } catch {
       solution = rawText;
       subject = 'maths';
+      topic = null;
     }
 
     // Save to revision_questions
     const { rows: [saved] } = await pool.query(
-      `INSERT INTO revision_questions (user_id, subject, question_text, question_image, solution)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [userId, subject, questionText || null, questionImage || null, solution]
+      `INSERT INTO revision_questions (user_id, subject, topic, question_text, question_image, solution)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [userId, subject, topic, questionText || null, questionImage || null, solution]
     );
 
-    res.json({ question: saved, solution, subject });
+    res.json({ question: saved, solution, subject, topic });
   } catch (err) {
     console.error('CAT ask error:', err);
     res.status(500).json({ error: 'Internal server error' });

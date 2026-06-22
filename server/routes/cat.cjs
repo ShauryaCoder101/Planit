@@ -183,7 +183,7 @@ Respond in this exact JSON format (no markdown, no code fences):
     });
 
     // Call Gemini API
-    const model = questionImage ? 'gemini-2.0-flash' : 'gemini-2.0-flash';
+    const model = 'gemini-2.5-flash';
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
     const geminiRes = await fetch(geminiUrl, {

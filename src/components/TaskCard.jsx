@@ -29,14 +29,19 @@ export default function TaskCard({ task, onUpdate }) {
         await api.put(`/api/daily/${task.id}`, { status: 'pending' });
       } else {
         // Finish timer FIRST so actual_duration is saved before completing
-        if (isTimerForThis) await finishTimer();
+        if (isTimerForThis) {
+          await finishTimer();
+        } else if (task.taskType !== 'goal' && !task.actualDuration) {
+          // No timer was used — auto-log the estimated duration
+          await api.put(`/api/daily/${task.id}`, { actualDuration: task.duration || task.estimatedDuration || 0 });
+        }
         await api.post(`/api/daily/${task.id}/complete`);
       }
       onUpdate();
     } catch (err) {
       console.error(err);
     }
-  }, [api, task.id, isCompleted, isTimerForThis, finishTimer, onUpdate]);
+  }, [api, task, isCompleted, isTimerForThis, finishTimer, onUpdate]);
 
   const handleTimerAction = useCallback(async () => {
     setTimerLoading(true);
